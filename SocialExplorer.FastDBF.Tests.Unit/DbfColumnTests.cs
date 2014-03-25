@@ -22,14 +22,6 @@ namespace SocialExplorer.FastDBF.Tests.Unit
 		}
 
 		/// <summary>
-		/// TestFixtureTearDown called once after all tests have been run in the same TestFixture
-		/// </summary>
-		[TestFixtureTearDown]
-		public void FixtureTearDown()
-		{
-		}
-
-		/// <summary>
 		/// SetsUp is called once before each Test within the same TestFxiture
 		/// If this throws an exception no Test in the TestFixture are run.
 		/// </summary>
@@ -46,6 +38,14 @@ namespace SocialExplorer.FastDBF.Tests.Unit
 		public void TearDown()
 		{
 		}
+
+		/// <summary>
+		/// TestFixtureTearDown called once after all tests have been run in the same TestFixture
+		/// </summary>
+		[TestFixtureTearDown]
+		public void FixtureTearDown()
+		{
+		}
 		#endregion
 
 
@@ -57,9 +57,29 @@ namespace SocialExplorer.FastDBF.Tests.Unit
 		[ExpectedException(typeof(Exception), ExpectedMessage = "Field names must be at least one char long and can not be null.")]
 		public void DbfColumn_Construct_NameNull_ThrowsException()
 		{
-			//Assert.Throws<Exception>(() => new DbfColumn(null, default(DbfColumn.DbfColumnType)));
 			var dbfColumn = new DbfColumn(null, default(DbfColumn.DbfColumnType));
 		}
+
+		[Test]
+		[ExpectedException(typeof(Exception), ExpectedMessage = "Field names must be at least one char long and can not be null.")]
+		public void DbfColumn_Construct_NameEmpty_ThrowsException()
+		{
+			var dbfColumn = new DbfColumn(string.Empty, default(DbfColumn.DbfColumnType));
+		}
+		[Test]
+		[ExpectedException(typeof(Exception), ExpectedMessage = "Field names can not be longer than 11 chars.")]
+		public void DbfColumn_Construct_NameLongerThan11Chars_ThrowsException()
+		{
+			var dbfColumn = new DbfColumn("TheseAreMoreThan11Chars", default(DbfColumn.DbfColumnType));
+		}
+
+		[Test]
+		[ExpectedException(typeof(Exception), ExpectedMessage = "Invalid field length specified. Field length can not be zero or less than zero.")]
+		public void DbfColumn_Construct_DbfColumnTypeNumber_NoLenghtNorDecimalPrecisionSpecified_ThrowsException()
+		{
+			var dbfColumn = new DbfColumn("COLUMN", DbfColumn.DbfColumnType.Number);
+		}
+
 		#endregion
 		#endregion
 	}
