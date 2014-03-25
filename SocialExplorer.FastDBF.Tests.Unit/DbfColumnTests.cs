@@ -4,6 +4,8 @@ using System.Text;
 
 using NUnit.Framework;
 
+using SocialExplorer.IO.FastDBF;
+
 
 namespace SocialExplorer.FastDBF.Tests.Unit
 {
@@ -49,6 +51,16 @@ namespace SocialExplorer.FastDBF.Tests.Unit
 
 		#region Tests
 
+
+		#region Constructors
+		[Test]
+		[ExpectedException(typeof(Exception), ExpectedMessage = "Field names must be at least one char long and can not be null.")]
+		public void DbfColumn_Construct_NameNull_ThrowsException()
+		{
+			//Assert.Throws<Exception>(() => new DbfColumn(null, default(DbfColumn.DbfColumnType)));
+			var dbfColumn = new DbfColumn(null, default(DbfColumn.DbfColumnType));
+		}
+		#endregion
 		#endregion
 	}
 }
