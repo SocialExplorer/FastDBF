@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿#region Usings
+using System;
 
 using NUnit.Framework;
 
 using SocialExplorer.IO.FastDBF;
+
+
+#endregion
 
 
 namespace SocialExplorer.FastDBF.Tests.Unit
@@ -78,6 +80,20 @@ namespace SocialExplorer.FastDBF.Tests.Unit
 		public void DbfColumn_Construct_DbfColumnTypeNumber_NoLenghtNorDecimalPrecisionSpecified_ThrowsException()
 		{
 			var dbfColumn = new DbfColumn("COLUMN", DbfColumn.DbfColumnType.Number);
+		}
+
+		[Test]
+		[ExpectedException(typeof(Exception), ExpectedMessage = "Invalid field length specified. Field length can not be zero or less than zero.")]
+		public void DbfColumn_Construct_DbfColumnTypeNumber_NoLenghtNorDecimalPrecisionSpecified2_ThrowsException()
+		{
+			var dbfColumn = new DbfColumn("COLUMN", DbfColumn.DbfColumnType.Number, 0, 0);
+		}
+
+		[Test]
+		[ExpectedException(typeof(Exception), ExpectedMessage = "Decimal precision can not be larger than the length of the field.")]
+		public void DbfColumn_Construct_DbfColumnTypeNumber_LenghtBiggerThanDecimalPrecision_ThrowsException()
+		{
+			var dbfColumn = new DbfColumn("COLUMN", DbfColumn.DbfColumnType.Number, 1, 2);
 		}
 
 		#endregion
