@@ -82,7 +82,7 @@ namespace DBF2CSV
         
         //open DBF file and create CSV output file...
         StreamWriter swcsv = new StreamWriter(args[1], false, Encoding.Default);
-        DbfFile dbf = new DbfFile();
+        DbfFile dbf = new DbfFile(Encoding.UTF8);
         dbf.Open(args[0], FileMode.Open);
         
         
