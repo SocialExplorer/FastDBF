@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Social Explorer FastDBF")]
-[assembly: AssemblyDescription("Social Explorer FastDBF library provides DBF file reading and writing facilities.")]
+[assembly: AssemblyTitle("SocialExplorer.FastDBF.Tests.Unit")]
+[assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Social Explorer")]
-[assembly: AssemblyProduct("Social Explorer FastDBF")]
-[assembly: AssemblyCopyright("Copyright © Social Explorer 2007")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("SocialExplorer.FastDBF.Tests.Unit")]
+[assembly: AssemblyCopyright("Copyright ©  2014")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("d9c79f02-80dd-4e92-80ea-480a0e814411")]
+[assembly: Guid("931ea051-66cc-4869-8368-40af93d8a4e5")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -29,7 +29,8 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-// You can specify all the values or you can default the Revision and Build Numbers 
+// You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
+// [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]

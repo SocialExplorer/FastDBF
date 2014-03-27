@@ -231,7 +231,7 @@ namespace SocialExplorer.IO.FastDBF
       set
       { 
         //name:
-        if (value == null || value == "")
+        if (string.IsNullOrEmpty(value))
           throw new Exception("Field names must be at least one char long and can not be null.");
         
         if (value.Length > 11)
