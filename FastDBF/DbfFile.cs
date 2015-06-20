@@ -34,28 +34,31 @@ namespace SocialExplorer.IO.FastDBF
         /// <summary>
         /// Helps read/write dbf file header information.
         /// </summary>
-        protected DbfHeader mHeader;
+        protected DbfHeader _header;
 
 
         /// <summary>
         /// flag that indicates whether the header was written or not...
         /// </summary>
-        protected bool mHeaderWritten = false;
+        protected bool _headerWritten = false;
 
 
         /// <summary>
         /// Streams to read and write to the DBF file.
         /// </summary>
-        protected Stream mDbfFile = null;
-        protected BinaryReader mDbfFileReader = null;
-        protected BinaryWriter mDbfFileWriter = null;
+        protected Stream _dbfFile = null;
+        protected BinaryReader _dbfFileReader = null;
+        protected BinaryWriter _dbfFileWriter = null;
 
-        private Encoding encoding = Encoding.ASCII;
+        /// <summary>
+        /// By default use windows 1252 code page encoding.
+        /// </summary>
+        private Encoding encoding =  Encoding.GetEncoding(1252);
 
         /// <summary>
         /// File that was opened, if one was opened at all.
         /// </summary>
-        protected string mFileName = "";
+        protected string _fileName = "";
 
 
         /// <summary>
@@ -63,25 +66,26 @@ namespace SocialExplorer.IO.FastDBF
         /// mRecordsReadCount is used to keep track of record index. With a seek enabled stream, 
         /// we can always calculate index using stream position.
         /// </summary>
-        protected int mRecordsReadCount = 0;
+        protected int _recordsReadCount = 0;
 
 
         /// <summary>
         /// keep these values handy so we don't call functions on every read.
         /// </summary>
-        protected bool mIsForwardOnly = false;
-        protected bool mIsReadOnly = false;
+        protected bool _isForwardOnly = false;
+        protected bool _isReadOnly = false;
+
 
         [Obsolete]
         public DbfFile()
-            : this(Encoding.ASCII)
+            : this(Encoding.GetEncoding(1252))
         {
         }
 
         public DbfFile(Encoding encoding)
         {
             this.encoding = encoding;
-            mHeader = new DbfHeader(encoding);
+            _header = new DbfHeader(encoding);
         }
 
         /// <summary>
@@ -92,24 +96,24 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="ofs"></param>
         public void Open(Stream ofs)
         {
-            if (mDbfFile != null)
+            if (_dbfFile != null)
                 Close();
 
-            mDbfFile = ofs;
-            mDbfFileReader = null;
-            mDbfFileWriter = null;
+            _dbfFile = ofs;
+            _dbfFileReader = null;
+            _dbfFileWriter = null;
 
-            if (mDbfFile.CanRead)
-                mDbfFileReader = new BinaryReader(mDbfFile, encoding);
+            if (_dbfFile.CanRead)
+                _dbfFileReader = new BinaryReader(_dbfFile, encoding);
 
-            if (mDbfFile.CanWrite)
-                mDbfFileWriter = new BinaryWriter(mDbfFile, encoding);
+            if (_dbfFile.CanWrite)
+                _dbfFileWriter = new BinaryWriter(_dbfFile, encoding);
 
             //reset position
-            mRecordsReadCount = 0;
+            _recordsReadCount = 0;
 
             //assume header is not written
-            mHeaderWritten = false;
+            _headerWritten = false;
 
             //read the header
             if (ofs.CanRead)
@@ -117,24 +121,24 @@ namespace SocialExplorer.IO.FastDBF
                 //try to read the header...
                 try
                 {
-                    mHeader.Read(mDbfFileReader);
-                    mHeaderWritten = true;
+                    _header.Read(_dbfFileReader);
+                    _headerWritten = true;
 
                 }
                 catch (EndOfStreamException)
                 {
                     //could not read header, file is empty
-                    mHeader = new DbfHeader(encoding);
-                    mHeaderWritten = false;
+                    _header = new DbfHeader(encoding);
+                    _headerWritten = false;
                 }
 
 
             }
 
-            if (mDbfFile != null)
+            if (_dbfFile != null)
             {
-                mIsReadOnly = !mDbfFile.CanWrite;
-                mIsForwardOnly = !mDbfFile.CanSeek;
+                _isReadOnly = !_dbfFile.CanWrite;
+                _isForwardOnly = !_dbfFile.CanSeek;
             }
 
 
@@ -149,7 +153,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="mode"></param>
         public void Open(string sPath, FileMode mode, FileAccess access, FileShare share)
         {
-            mFileName = sPath;
+            _fileName = sPath;
             Open(File.Open(sPath, mode, access, share));
         }
 
@@ -160,7 +164,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="mode"></param>
         public void Open(string sPath, FileMode mode, FileAccess access)
         {
-            mFileName = sPath;
+            _fileName = sPath;
             Open(File.Open(sPath, mode, access));
         }
 
@@ -171,7 +175,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="mode"></param>
         public void Open(string sPath, FileMode mode)
         {
-            mFileName = sPath;
+            _fileName = sPath;
             Open(File.Open(sPath, mode));
         }
 
@@ -183,7 +187,7 @@ namespace SocialExplorer.IO.FastDBF
         public void Create(string sPath)
         {
             Open(sPath, FileMode.Create, FileAccess.ReadWrite);
-            mHeaderWritten = false;
+            _headerWritten = false;
 
         }
 
@@ -197,44 +201,44 @@ namespace SocialExplorer.IO.FastDBF
 
             //try to update the header if it has changed
             //------------------------------------------
-            if (mHeader.IsDirty)
+            if (_header.IsDirty)
                 WriteHeader();
 
 
 
             //Empty header...
             //--------------------------------
-            mHeader = new DbfHeader(encoding);
-            mHeaderWritten = false;
+            _header = new DbfHeader(encoding);
+            _headerWritten = false;
 
 
             //reset current record index
             //--------------------------------
-            mRecordsReadCount = 0;
+            _recordsReadCount = 0;
 
 
             //Close streams...
             //--------------------------------
-            if (mDbfFileWriter != null)
+            if (_dbfFileWriter != null)
             {
-                mDbfFileWriter.Flush();
-                mDbfFileWriter.Close();
+                _dbfFileWriter.Flush();
+                _dbfFileWriter.Close();
             }
 
-            if (mDbfFileReader != null)
-                mDbfFileReader.Close();
+            if (_dbfFileReader != null)
+                _dbfFileReader.Close();
 
-            if (mDbfFile != null)
-                mDbfFile.Close();
+            if (_dbfFile != null)
+                _dbfFile.Close();
 
 
             //set streams to null
             //--------------------------------
-            mDbfFileReader = null;
-            mDbfFileWriter = null;
-            mDbfFile = null;
+            _dbfFileReader = null;
+            _dbfFileWriter = null;
+            _dbfFile = null;
 
-            mFileName = "";
+            _fileName = "";
 
         }
 
@@ -247,7 +251,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mIsReadOnly;
+                return _isReadOnly;
                 /*
                 if (mDbfFile != null)
                   return !mDbfFile.CanWrite; 
@@ -266,7 +270,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mIsForwardOnly;
+                return _isForwardOnly;
                 /*
                 if(mDbfFile!=null)
                   return !mDbfFile.CanSeek;
@@ -284,7 +288,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mFileName;
+                return _fileName;
             }
         }
 
@@ -300,29 +304,29 @@ namespace SocialExplorer.IO.FastDBF
 
             //check if we can fill this record with data. it must match record size specified by header and number of columns.
             //we are not checking whether it comes from another DBF file or not, we just need the same structure. Allow flexibility but be safe.
-            if (oFillRecord.Header != mHeader && (oFillRecord.Header.ColumnCount != mHeader.ColumnCount || oFillRecord.Header.RecordLength != mHeader.RecordLength))
+            if (oFillRecord.Header != _header && (oFillRecord.Header.ColumnCount != _header.ColumnCount || oFillRecord.Header.RecordLength != _header.RecordLength))
                 throw new Exception("Record parameter does not have the same size and number of columns as the " +
                                     "header specifies, so we are unable to read a record into oFillRecord. " +
                                     "This is a programming error, have you mixed up DBF file objects?");
 
             //DBF file reader can be null if stream is not readable...
-            if (mDbfFileReader == null)
+            if (_dbfFileReader == null)
                 throw new Exception("Read stream is null, either you have opened a stream that can not be " +
                                     "read from (a write-only stream) or you have not opened a stream at all.");
 
             //read next record...
-            bool bRead = oFillRecord.Read(mDbfFile);
+            bool bRead = oFillRecord.Read(_dbfFile);
 
             if (bRead)
             {
-                if (mIsForwardOnly)
+                if (_isForwardOnly)
                 {
                     //zero based index! set before incrementing count.
-                    oFillRecord.RecordIndex = mRecordsReadCount;
-                    mRecordsReadCount++;
+                    oFillRecord.RecordIndex = _recordsReadCount;
+                    _recordsReadCount++;
                 }
                 else
-                    oFillRecord.RecordIndex = ((int)((mDbfFile.Position - mHeader.HeaderLength) / mHeader.RecordLength)) - 1;
+                    oFillRecord.RecordIndex = ((int)((_dbfFile.Position - _header.HeaderLength) / _header.RecordLength)) - 1;
 
             }
 
@@ -338,7 +342,7 @@ namespace SocialExplorer.IO.FastDBF
         public DbfRecord ReadNext()
         {
             //create a new record and fill it.
-            DbfRecord orec = new DbfRecord(mHeader);
+            DbfRecord orec = new DbfRecord(_header);
 
             return ReadNext(orec) ? orec : null;
 
@@ -364,31 +368,31 @@ namespace SocialExplorer.IO.FastDBF
 
             //check if we can fill this record with data. it must match record size specified by header and number of columns.
             //we are not checking whether it comes from another DBF file or not, we just need the same structure. Allow flexibility but be safe.
-            if (oFillRecord.Header != mHeader && (oFillRecord.Header.ColumnCount != mHeader.ColumnCount || oFillRecord.Header.RecordLength != mHeader.RecordLength))
+            if (oFillRecord.Header != _header && (oFillRecord.Header.ColumnCount != _header.ColumnCount || oFillRecord.Header.RecordLength != _header.RecordLength))
                 throw new Exception("Record parameter does not have the same size and number of columns as the " +
                                     "header specifies, so we are unable to read a record into oFillRecord. " +
                                     "This is a programming error, have you mixed up DBF file objects?");
 
             //DBF file reader can be null if stream is not readable...
-            if (mDbfFileReader == null)
+            if (_dbfFileReader == null)
                 throw new Exception("ReadStream is null, either you have opened a stream that can not be " +
                                     "read from (a write-only stream) or you have not opened a stream at all.");
 
 
             //move to the specified record, note that an exception will be thrown is stream is not seekable! 
             //This is ok, since we provide a function to check whether the stream is seekable. 
-            long nSeekToPosition = mHeader.HeaderLength + (index * mHeader.RecordLength);
+            long nSeekToPosition = _header.HeaderLength + (index * _header.RecordLength);
 
             //check whether requested record exists. Subtract 1 from file length (there is a terminating character 1A at the end of the file)
             //so if we hit end of file, there are no more records, so return false;
-            if (index < 0 || mDbfFile.Length - 1 <= nSeekToPosition)
+            if (index < 0 || _dbfFile.Length - 1 <= nSeekToPosition)
                 return false;
 
             //move to record and read
-            mDbfFile.Seek(nSeekToPosition, SeekOrigin.Begin);
+            _dbfFile.Seek(nSeekToPosition, SeekOrigin.Begin);
 
             //read the record
-            bool bRead = oFillRecord.Read(mDbfFile);
+            bool bRead = oFillRecord.Read(_dbfFile);
             if (bRead)
                 oFillRecord.RecordIndex = index;
 
@@ -401,23 +405,23 @@ namespace SocialExplorer.IO.FastDBF
 
             result = String.Empty;
 
-            DbfColumn ocol = mHeader[columnIndex];
+            DbfColumn ocol = _header[columnIndex];
 
             //move to the specified record, note that an exception will be thrown is stream is not seekable! 
             //This is ok, since we provide a function to check whether the stream is seekable. 
-            long nSeekToPosition = mHeader.HeaderLength + (rowIndex * mHeader.RecordLength) + ocol.DataAddress;
+            long nSeekToPosition = _header.HeaderLength + (rowIndex * _header.RecordLength) + ocol.DataAddress;
 
             //check whether requested record exists. Subtract 1 from file length (there is a terminating character 1A at the end of the file)
             //so if we hit end of file, there are no more records, so return false;
-            if (rowIndex < 0 || mDbfFile.Length - 1 <= nSeekToPosition)
+            if (rowIndex < 0 || _dbfFile.Length - 1 <= nSeekToPosition)
                 return false;
 
             //move to position and read
-            mDbfFile.Seek(nSeekToPosition, SeekOrigin.Begin);
+            _dbfFile.Seek(nSeekToPosition, SeekOrigin.Begin);
 
             //read the value
             byte[] data = new byte[ocol.Length];
-            mDbfFile.Read(data, 0, ocol.Length);
+            _dbfFile.Read(data, 0, ocol.Length);
             result = new string(encoding.GetChars(data, 0, ocol.Length));
 
             return true;
@@ -432,7 +436,7 @@ namespace SocialExplorer.IO.FastDBF
         public DbfRecord Read(int index)
         {
             //create a new record and fill it.
-            DbfRecord orec = new DbfRecord(mHeader);
+            DbfRecord orec = new DbfRecord(_header);
 
             return Read(index, orec) ? orec : null;
 
@@ -451,31 +455,31 @@ namespace SocialExplorer.IO.FastDBF
         {
 
             //if header was never written, write it first, then output the record
-            if (!mHeaderWritten)
+            if (!_headerWritten)
                 WriteHeader();
 
             //if this is a new record (RecordIndex should be -1 in that case)
             if (orec.RecordIndex < 0)
             {
-                if (mDbfFileWriter.BaseStream.CanSeek)
+                if (_dbfFileWriter.BaseStream.CanSeek)
                 {
                     //calculate number of records in file. do not rely on header's RecordCount property since client can change that value.
                     //also note that some DBF files do not have ending 0x1A byte, so we subtract 1 and round off 
                     //instead of just cast since cast would just drop decimals.
-                    int nNumRecords = (int)Math.Round(((double)(mDbfFile.Length - mHeader.HeaderLength - 1) / mHeader.RecordLength));
+                    int nNumRecords = (int)Math.Round(((double)(_dbfFile.Length - _header.HeaderLength - 1) / _header.RecordLength));
                     if (nNumRecords < 0)
                         nNumRecords = 0;
 
                     orec.RecordIndex = nNumRecords;
                     Update(orec);
-                    mHeader.RecordCount++;
+                    _header.RecordCount++;
 
                 }
                 else
                 {
                     //we can not position this stream, just write out the new record.
-                    orec.Write(mDbfFile);
-                    mHeader.RecordCount++;
+                    orec.Write(_dbfFile);
+                    _header.RecordCount++;
                 }
             }
             else
@@ -504,7 +508,7 @@ namespace SocialExplorer.IO.FastDBF
         {
 
             //if header was never written, write it first, then output the record
-            if (!mHeaderWritten)
+            if (!_headerWritten)
                 WriteHeader();
 
 
@@ -515,31 +519,31 @@ namespace SocialExplorer.IO.FastDBF
 
             //Check if this record matches record size specified by header and number of columns. 
             //Client can pass a record from another DBF that is incompatible with this one and that would corrupt the file.
-            if (orec.Header != mHeader && (orec.Header.ColumnCount != mHeader.ColumnCount || orec.Header.RecordLength != mHeader.RecordLength))
+            if (orec.Header != _header && (orec.Header.ColumnCount != _header.ColumnCount || orec.Header.RecordLength != _header.RecordLength))
                 throw new Exception("Record parameter does not have the same size and number of columns as the " +
                                     "header specifies. Writing this record would corrupt the DBF file. " +
                                     "This is a programming error, have you mixed up DBF file objects?");
 
             //DBF file writer can be null if stream is not writable to...
-            if (mDbfFileWriter == null)
+            if (_dbfFileWriter == null)
                 throw new Exception("Write stream is null. Either you have opened a stream that can not be " +
                                     "writen to (a read-only stream) or you have not opened a stream at all.");
 
 
             //move to the specified record, note that an exception will be thrown if stream is not seekable! 
             //This is ok, since we provide a function to check whether the stream is seekable. 
-            long nSeekToPosition = (long)mHeader.HeaderLength + (long)((long)orec.RecordIndex * (long)mHeader.RecordLength);
+            long nSeekToPosition = (long)_header.HeaderLength + (long)((long)orec.RecordIndex * (long)_header.RecordLength);
 
             //check whether we can seek to this position. Subtract 1 from file length (there is a terminating character 1A at the end of the file)
             //so if we hit end of file, there are no more records, so return false;
-            if (mDbfFile.Length < nSeekToPosition)
+            if (_dbfFile.Length < nSeekToPosition)
                 throw new Exception("Invalid record position. Unable to save record.");
 
             //move to record start
-            mDbfFile.Seek(nSeekToPosition, SeekOrigin.Begin);
+            _dbfFile.Seek(nSeekToPosition, SeekOrigin.Begin);
 
             //write
-            orec.Write(mDbfFile);
+            orec.Write(_dbfFile);
 
 
         }
@@ -555,22 +559,22 @@ namespace SocialExplorer.IO.FastDBF
 
             //update header if possible
             //--------------------------------
-            if (mDbfFileWriter != null)
+            if (_dbfFileWriter != null)
             {
-                if (mDbfFileWriter.BaseStream.CanSeek)
+                if (_dbfFileWriter.BaseStream.CanSeek)
                 {
-                    mDbfFileWriter.Seek(0, SeekOrigin.Begin);
-                    mHeader.Write(mDbfFileWriter);
-                    mHeaderWritten = true;
+                    _dbfFileWriter.Seek(0, SeekOrigin.Begin);
+                    _header.Write(_dbfFileWriter);
+                    _headerWritten = true;
                     return true;
                 }
                 else
                 {
                     //if stream can not seek, then just write it out and that's it.
-                    if (!mHeaderWritten)
-                        mHeader.Write(mDbfFileWriter);
+                    if (!_headerWritten)
+                        _header.Write(_dbfFileWriter);
 
-                    mHeaderWritten = true;
+                    _headerWritten = true;
 
                 }
             }
@@ -589,7 +593,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mHeader;
+                return _header;
             }
         }
 

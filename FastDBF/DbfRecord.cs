@@ -34,62 +34,62 @@ namespace SocialExplorer.IO.FastDBF
         /// <summary>
         /// Header provides information on all field types, sizes, precision and other useful information about the DBF.
         /// </summary>
-        private DbfHeader mHeader = null;
+        private DbfHeader _header = null;
 
         /// <summary>
         /// Dbf data are a mix of ASCII characters and binary, which neatly fit in a byte array.
         /// BinaryWriter would esentially perform the same conversion using the same Encoding class.
         /// </summary>
-        private byte[] mData = null;
+        private byte[] _data = null;
 
         /// <summary>
         /// Zero based record index. -1 when not set, new records for example.
         /// </summary>
-        private int mRecordIndex = -1;
+        private int _recordIndex = -1;
 
         /// <summary>
         /// Empty Record array reference used to clear fields quickly (or entire record).
         /// </summary>
-        private readonly byte[] mEmptyRecord = null;
+        private readonly byte[] _emptyRecord = null;
 
 
         /// <summary>
         /// Specifies whether we allow strings to be truncated. If false and string is longer than we can fit in the field, an exception is thrown.
         /// </summary>
-        private bool mAllowStringTruncate = true;
+        private bool _allowStringTruncate = true;
 
         /// <summary>
         /// Specifies whether we allow the decimal portion of numbers to be truncated. 
         /// If false and decimal digits overflow the field, an exception is thrown.
         /// </summary>
-        private bool mAllowDecimalTruncate = false;
+        private bool _allowDecimalTruncate = false;
 
         /// <summary>
         /// Specifies whether we allow the integer portion of numbers to be truncated.
         /// If false and integer digits overflow the field, an exception is thrown.
         /// </summary>
-        private bool mAllowIntegerTruncate = false;
+        private bool _allowIntegerTruncate = false;
 
 
         //array used to clear decimals, we can clear up to 40 decimals which is much more than is allowed under DBF spec anyway.
         //Note: 48 is ASCII code for 0.
-        private static readonly byte[] mDecimalClear = new byte[] {48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,
+        private static readonly byte[] _decimalClear = new byte[] {48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,
                                                                48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,
                                                                48,48,48,48,48,48,48,48,48,48,48,48,48,48,48};
 
 
         //Warning: do not make this one static because that would not be thread safe!! The reason I have 
         //placed this here is to skip small memory allocation/deallocation which fragments memory in .net.
-        private int[] mTempIntVal = { 0 };
+        private int[] _tempIntVal = { 0 };
 
 
-        //Ascii Encoder
-        private readonly Encoding encoding = Encoding.ASCII;
+        //encoder
+        private readonly Encoding encoding = Encoding.GetEncoding(1252);
 
         /// <summary>
         /// Column Name to Column Index map
         /// </summary>
-        private readonly Dictionary<string, int> mColNameToConIdx = new Dictionary<string, int>(StringComparer.InvariantCulture);
+        private readonly Dictionary<string, int> _colNameToIdx = new Dictionary<string, int>(StringComparer.InvariantCulture);
 
 
 
@@ -100,16 +100,16 @@ namespace SocialExplorer.IO.FastDBF
         /// since the record size is fixed and if the header was modified it would corrupt the DBF file.</param>
         public DbfRecord(DbfHeader oHeader)
         {
-            mHeader = oHeader;
-            mHeader.Locked = true;
+            _header = oHeader;
+            _header.Locked = true;
 
             //create a buffer to hold all record data. We will reuse this buffer to write all data to the file.
-            mData = new byte[mHeader.RecordLength];
-            mEmptyRecord = mHeader.EmptyDataRecord;
+            _data = new byte[_header.RecordLength];
+            _emptyRecord = _header.EmptyDataRecord;
             encoding = oHeader.encoding;
 
-            for (int i = 0; i < oHeader.mFields.Count; i++)
-                mColNameToConIdx[oHeader.mFields[i].Name] = i;
+            for (int i = 0; i < oHeader._fields.Count; i++)
+                _colNameToIdx[oHeader._fields[i].Name] = i;
         }
 
 
@@ -126,7 +126,7 @@ namespace SocialExplorer.IO.FastDBF
             set
             {
 
-                DbfColumn ocol = mHeader[nColIndex];
+                DbfColumn ocol = _header[nColIndex];
                 DbfColumn.DbfColumnType ocolType = ocol.ColumnType;
 
 
@@ -138,7 +138,7 @@ namespace SocialExplorer.IO.FastDBF
                 {
                     //this is like NULL data, set it to empty. i looked at SAS DBF output when a null value exists 
                     //and empty data are output. we get the same result, so this looks good.
-                    Buffer.BlockCopy(mEmptyRecord, ocol.DataAddress, mData, ocol.DataAddress, ocol.Length);
+                    Buffer.BlockCopy(_emptyRecord, ocol.DataAddress, _data, ocol.DataAddress, ocol.Length);
 
                 }
                 else
@@ -148,12 +148,12 @@ namespace SocialExplorer.IO.FastDBF
                     //-------------------------------------------------------------
                     if (ocolType == DbfColumn.DbfColumnType.Character)
                     {
-                        if (!mAllowStringTruncate && value.Length > ocol.Length)
+                        if (!_allowStringTruncate && value.Length > ocol.Length)
                             throw new DbfDataTruncateException("Value not set. String truncation would occur and AllowStringTruncate flag is set to false. To supress this exception change AllowStringTruncate to true.");
 
                         //BlockCopy copies bytes.  First clear the previous value, then set the new one.
-                        Buffer.BlockCopy(mEmptyRecord, ocol.DataAddress, mData, ocol.DataAddress, ocol.Length);
-                        encoding.GetBytes(value, 0, value.Length > ocol.Length ? ocol.Length : value.Length, mData, ocol.DataAddress);
+                        Buffer.BlockCopy(_emptyRecord, ocol.DataAddress, _data, ocol.DataAddress, ocol.Length);
+                        encoding.GetBytes(value, 0, value.Length > ocol.Length ? ocol.Length : value.Length, _data, ocol.DataAddress);
 
                     }
                     else if (ocolType == DbfColumn.DbfColumnType.Number)
@@ -166,26 +166,26 @@ namespace SocialExplorer.IO.FastDBF
                             //----------------------------------
 
                             //throw an exception if integer overflow would occur
-                            if (!mAllowIntegerTruncate && value.Length > ocol.Length)
+                            if (!_allowIntegerTruncate && value.Length > ocol.Length)
                                 throw new DbfDataTruncateException("Value not set. Integer does not fit and would be truncated. AllowIntegerTruncate is set to false. To supress this exception set AllowIntegerTruncate to true, although that is not recomended.");
 
 
                             //clear all numbers, set to [space].
                             //-----------------------------------------------------
-                            Buffer.BlockCopy(mEmptyRecord, 0, mData, ocol.DataAddress, ocol.Length);
+                            Buffer.BlockCopy(_emptyRecord, 0, _data, ocol.DataAddress, ocol.Length);
 
 
                             //set integer part, CAREFUL not to overflow buffer! (truncate instead)
                             //-----------------------------------------------------------------------
                             int nNumLen = value.Length > ocol.Length ? ocol.Length : value.Length;
-                            encoding.GetBytes(value, 0, nNumLen, mData, (ocol.DataAddress + ocol.Length - nNumLen));
+                            encoding.GetBytes(value, 0, nNumLen, _data, (ocol.DataAddress + ocol.Length - nNumLen));
 
                         }
                         else
                         {
 
                             ///TODO: we can improve perfomance here by not using temp char arrays cDec and cNum,
-                            ///simply direcly copy from source string using encoding!
+                            ///simply directly copy from source string using encoding!
 
 
                             //break value down into integer and decimal portions
@@ -200,7 +200,7 @@ namespace SocialExplorer.IO.FastDBF
                                 cNum = value.Substring(0, nidxDecimal).ToCharArray();
 
                                 //throw an exception if decimal overflow would occur
-                                if (!mAllowDecimalTruncate && cDec.Length > ocol.DecimalCount)
+                                if (!_allowDecimalTruncate && cDec.Length > ocol.DecimalCount)
                                     throw new DbfDataTruncateException("Value not set. Decimal does not fit and would be truncated. AllowDecimalTruncate is set to false. To supress this exception set AllowDecimalTruncate to true.");
 
                             }
@@ -209,17 +209,20 @@ namespace SocialExplorer.IO.FastDBF
 
 
                             //throw an exception if integer overflow would occur
-                            if (!mAllowIntegerTruncate && cNum.Length > ocol.Length - ocol.DecimalCount - 1)
+                            if (!_allowIntegerTruncate && cNum.Length > ocol.Length - ocol.DecimalCount - 1)
                                 throw new DbfDataTruncateException("Value not set. Integer does not fit and would be truncated. AllowIntegerTruncate is set to false. To supress this exception set AllowIntegerTruncate to true, although that is not recomended.");
 
 
-
+                            //------------------------------------------------------------------------------------------------------------------
+                            // NUMERIC TYPE
+                            //------------------------------------------------------------------------------------------------------------------
+                                
                             //clear all decimals, set to 0.
                             //-----------------------------------------------------
-                            Buffer.BlockCopy(mDecimalClear, 0, mData, (ocol.DataAddress + ocol.Length - ocol.DecimalCount), ocol.DecimalCount);
+                            Buffer.BlockCopy(_decimalClear, 0, _data, (ocol.DataAddress + ocol.Length - ocol.DecimalCount), ocol.DecimalCount);
 
                             //clear all numbers, set to [space].
-                            Buffer.BlockCopy(mEmptyRecord, 0, mData, ocol.DataAddress, (ocol.Length - ocol.DecimalCount));
+                            Buffer.BlockCopy(_emptyRecord, 0, _data, ocol.DataAddress, (ocol.Length - ocol.DecimalCount));
 
 
 
@@ -228,22 +231,50 @@ namespace SocialExplorer.IO.FastDBF
                             if (nidxDecimal > -1)
                             {
                                 int nLen = cDec.Length > ocol.DecimalCount ? ocol.DecimalCount : cDec.Length;
-                                encoding.GetBytes(cDec, 0, nLen, mData, (ocol.DataAddress + ocol.Length - ocol.DecimalCount));
+                                encoding.GetBytes(cDec, 0, nLen, _data, (ocol.DataAddress + ocol.Length - ocol.DecimalCount));
                             }
 
                             //set integer part, CAREFUL not to overflow buffer! (truncate instead)
                             //-----------------------------------------------------------------------
                             int nNumLen = cNum.Length > ocol.Length - ocol.DecimalCount - 1 ? (ocol.Length - ocol.DecimalCount - 1) : cNum.Length;
-                            encoding.GetBytes(cNum, 0, nNumLen, mData, ocol.DataAddress + ocol.Length - ocol.DecimalCount - nNumLen - 1);
+                            encoding.GetBytes(cNum, 0, nNumLen, _data, ocol.DataAddress + ocol.Length - ocol.DecimalCount - nNumLen - 1);
 
 
                             //set decimal point
                             //-----------------------------------------------------------------------
-                            mData[ocol.DataAddress + ocol.Length - ocol.DecimalCount - 1] = (byte)'.';
-
+                            _data[ocol.DataAddress + ocol.Length - ocol.DecimalCount - 1] = (byte)'.';
+                            
 
                         }
 
+
+                    }
+                    else if (ocolType == DbfColumn.DbfColumnType.Float)
+                    {
+                        //------------------------------------------------------------------------------------------------------------------
+                        // FLOAT TYPE
+                        // example:   value=" 2.40000000000e+001"  Length=19   Decimal-Count=11
+                        //------------------------------------------------------------------------------------------------------------------
+
+
+                        // check size, throw exception if value won't fit:
+                        if (value.Length > ocol.Length)
+                            throw new DbfDataTruncateException("Value not set. Float value does not fit and would be truncated.");
+
+                        
+                        double parsed_value;
+                        if (!Double.TryParse(value, out parsed_value))
+                        {
+                            //value did not parse, input is not correct.
+                            throw new DbfDataTruncateException("Value not set. Float value format is bad: '" + value + "'   expected format: ' 2.40000000000e+001'");
+                        }
+
+                        //clear value that was present previously
+                        Buffer.BlockCopy(_decimalClear, 0, _data, ocol.DataAddress, ocol.Length);
+
+                        //copy new value at location
+                        char[] valueAsCharArray = value.ToCharArray();
+                        encoding.GetBytes(valueAsCharArray, 0, valueAsCharArray.Length, _data, ocol.DataAddress);
 
                     }
                     else if (ocolType == DbfColumn.DbfColumnType.Integer)
@@ -252,8 +283,8 @@ namespace SocialExplorer.IO.FastDBF
                         //----------------------------------------------
 
                         ///TODO: maybe there is a better way to copy 4 bytes from int to byte array. Some memory function or something.
-                        mTempIntVal[0] = Convert.ToInt32(value);
-                        Buffer.BlockCopy(mTempIntVal, 0, mData, ocol.DataAddress, 4);
+                        _tempIntVal[0] = Convert.ToInt32(value);
+                        Buffer.BlockCopy(_tempIntVal, 0, _data, ocol.DataAddress, 4);
 
                     }
                     else if (ocolType == DbfColumn.DbfColumnType.Memo)
@@ -269,11 +300,11 @@ namespace SocialExplorer.IO.FastDBF
                         if (String.Compare(value, "true", true) == 0 || String.Compare(value, "1", true) == 0 ||
                             String.Compare(value, "T", true) == 0 || String.Compare(value, "yes", true) == 0 ||
                             String.Compare(value, "Y", true) == 0)
-                            mData[ocol.DataAddress] = (byte)'T';
+                            _data[ocol.DataAddress] = (byte)'T';
                         else if (value == " " || value == "?")
-                            mData[ocol.DataAddress] = (byte)'?';
+                            _data[ocol.DataAddress] = (byte)'?';
                         else
-                            mData[ocol.DataAddress] = (byte)'F';
+                            _data[ocol.DataAddress] = (byte)'F';
 
                     }
                     else if (ocolType == DbfColumn.DbfColumnType.Date)
@@ -300,8 +331,8 @@ namespace SocialExplorer.IO.FastDBF
 
             get
             {
-                DbfColumn ocol = mHeader[nColIndex];
-                return new string(encoding.GetChars(mData, ocol.DataAddress, ocol.Length));
+                DbfColumn ocol = _header[nColIndex];
+                return new string(encoding.GetChars(_data, ocol.DataAddress, ocol.Length));
 
             }
         }
@@ -317,14 +348,14 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                if (mColNameToConIdx.ContainsKey(nColName))
-                    return this[mColNameToConIdx[nColName]];
+                if (_colNameToIdx.ContainsKey(nColName))
+                    return this[_colNameToIdx[nColName]];
                 throw new InvalidOperationException(string.Format("There's no column with name '{0}'", nColName));
             }
             set
             {
-                if (mColNameToConIdx.ContainsKey(nColName))
-                    this[mColNameToConIdx[nColName]] = value;
+                if (_colNameToIdx.ContainsKey(nColName))
+                    this[_colNameToIdx[nColName]] = value;
                 else
                     throw new InvalidOperationException(string.Format("There's no column with name '{0}'", nColName));
             }
@@ -337,11 +368,11 @@ namespace SocialExplorer.IO.FastDBF
         /// <returns></returns>
         public DateTime GetDateValue(int nColIndex)
         {
-            DbfColumn ocol = mHeader[nColIndex];
+            DbfColumn ocol = _header[nColIndex];
 
             if (ocol.ColumnType == DbfColumn.DbfColumnType.Date)
             {
-                string sDateVal = encoding.GetString(mData, ocol.DataAddress, ocol.Length);
+                string sDateVal = encoding.GetString(_data, ocol.DataAddress, ocol.Length);
                 return DateTime.ParseExact(sDateVal, "yyyyMMdd", CultureInfo.InvariantCulture);
 
             }
@@ -359,7 +390,7 @@ namespace SocialExplorer.IO.FastDBF
         public void SetDateValue(int nColIndex, DateTime value)
         {
 
-            DbfColumn ocol = mHeader[nColIndex];
+            DbfColumn ocol = _header[nColIndex];
             DbfColumn.DbfColumnType ocolType = ocol.ColumnType;
 
 
@@ -368,7 +399,7 @@ namespace SocialExplorer.IO.FastDBF
 
                 //Format date and set value, date format is like this: yyyyMMdd
                 //-------------------------------------------------------------
-                encoding.GetBytes(value.ToString("yyyyMMdd"), 0, ocol.Length, mData, ocol.DataAddress);
+                encoding.GetBytes(value.ToString("yyyyMMdd"), 0, ocol.Length, _data, ocol.DataAddress);
 
             }
             else
@@ -383,8 +414,8 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         public void Clear()
         {
-            Buffer.BlockCopy(mEmptyRecord, 0, mData, 0, mEmptyRecord.Length);
-            mRecordIndex = -1;
+            Buffer.BlockCopy(_emptyRecord, 0, _data, 0, _emptyRecord.Length);
+            _recordIndex = -1;
 
         }
 
@@ -395,7 +426,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <returns></returns>
         public override string ToString()
         {
-            return new string(encoding.GetChars(mData));
+            return new string(encoding.GetChars(_data));
         }
 
 
@@ -414,11 +445,11 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mRecordIndex;
+                return _recordIndex;
             }
             set
             {
-                mRecordIndex = value;
+                _recordIndex = value;
             }
         }
 
@@ -430,8 +461,8 @@ namespace SocialExplorer.IO.FastDBF
         /// <seealso cref="CDbf4File.Compress() function"/>
         public bool IsDeleted
         {
-            get { return mData[0] == '*'; }
-            set { mData[0] = value ? (byte)'*' : (byte)' '; }
+            get { return _data[0] == '*'; }
+            set { _data[0] = value ? (byte)'*' : (byte)' '; }
         }
 
 
@@ -441,8 +472,8 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         public bool AllowStringTurncate
         {
-            get { return mAllowStringTruncate; }
-            set { mAllowStringTruncate = value; }
+            get { return _allowStringTruncate; }
+            set { _allowStringTruncate = value; }
         }
 
         /// <summary>
@@ -451,8 +482,8 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         public bool AllowDecimalTruncate
         {
-            get { return mAllowDecimalTruncate; }
-            set { mAllowDecimalTruncate = value; }
+            get { return _allowDecimalTruncate; }
+            set { _allowDecimalTruncate = value; }
         }
 
 
@@ -463,8 +494,8 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         public bool AllowIntegerTruncate
         {
-            get { return mAllowIntegerTruncate; }
-            set { mAllowIntegerTruncate = value; }
+            get { return _allowIntegerTruncate; }
+            set { _allowIntegerTruncate = value; }
         }
 
 
@@ -475,7 +506,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mHeader;
+                return _header;
             }
         }
 
@@ -487,7 +518,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <returns></returns>
         public DbfColumn Column(int index)
         {
-            return mHeader[index];
+            return _header[index];
         }
 
         /// <summary>
@@ -497,7 +528,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <returns></returns>
         public DbfColumn Column(string sName)
         {
-            return mHeader[sName];
+            return _header[sName];
         }
 
         /// <summary>
@@ -507,7 +538,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mHeader.ColumnCount;
+                return _header.ColumnCount;
             }
         }
 
@@ -518,7 +549,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <returns>Column index (0 based) or -1 if not found.</returns>
         public int FindColumn(string sName)
         {
-            return mHeader.FindColumn(sName);
+            return _header.FindColumn(sName);
         }
 
         /// <summary>
@@ -527,7 +558,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="osw"></param>
         protected internal void Write(Stream osw)
         {
-            osw.Write(mData, 0, mData.Length);
+            osw.Write(_data, 0, _data.Length);
 
         }
 
@@ -538,7 +569,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="osw"></param>
         protected internal void Write(Stream obw, bool bClearRecordAfterWrite)
         {
-            obw.Write(mData, 0, mData.Length);
+            obw.Write(_data, 0, _data.Length);
 
             if (bClearRecordAfterWrite)
                 Clear();
@@ -553,13 +584,13 @@ namespace SocialExplorer.IO.FastDBF
         /// <returns></returns>
         protected internal bool Read(Stream obr)
         {
-            return obr.Read(mData, 0, mData.Length) >= mData.Length;
+            return obr.Read(_data, 0, _data.Length) >= _data.Length;
         }
 
         protected internal string ReadValue(Stream obr, int colIndex)
         {
-            DbfColumn ocol = mHeader[colIndex];
-            return new string(encoding.GetChars(mData, ocol.DataAddress, ocol.Length));
+            DbfColumn ocol = _header[colIndex];
+            return new string(encoding.GetChars(_data, ocol.DataAddress, ocol.Length));
 
         }
 

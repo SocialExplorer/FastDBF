@@ -133,34 +133,34 @@ namespace SocialExplorer.IO.FastDBF
 
 
         //type of the file, must be 03h
-        private const int mFileType = 0x03;
+        private const int _fileType = 0x03;
 
         //Date the file was last updated.
-        private DateTime mUpdateDate;
+        private DateTime _updateDate;
 
         //Number of records in the datafile, 32bit little-endian, unsigned 
-        private uint mNumRecords = 0;
+        private uint _numRecords = 0;
 
         //Length of the header structure
-        private ushort mHeaderLength = FileDescriptorSize;  //empty header is 33 bytes long. Each column adds 32 bytes.
+        private ushort _headerLength = FileDescriptorSize;  //empty header is 33 bytes long. Each column adds 32 bytes.
 
         //Length of the records, ushort - unsigned 16 bit integer
-        private int mRecordLength = 1;  //start with 1 because the first byte is a delete flag
+        private int _recordLength = 1;  //start with 1 because the first byte is a delete flag
 
         //DBF fields/columns
-        internal List<DbfColumn> mFields = new List<DbfColumn>();
+        internal List<DbfColumn> _fields = new List<DbfColumn>();
 
 
         //indicates whether header columns can be modified!
-        bool mLocked = false;
+        bool _locked = false;
 
         //keeps column name index for the header, must clear when header columns change.
-        private Dictionary<string, int> mColumnNameIndex = null;
+        private Dictionary<string, int> _columnNameIndex = null;
 
         /// <summary>
         /// When object is modified dirty flag is set.
         /// </summary>
-        bool mIsDirty = false;
+        bool _isDirty = false;
 
 
         /// <summary>
@@ -168,7 +168,7 @@ namespace SocialExplorer.IO.FastDBF
         /// This is shared by all record objects, used to speed up clearing fields or entire record.
         /// <seealso cref="EmptyDataRecord"/>
         /// </summary>
-        private byte[] mEmptyRecord = null;
+        private byte[] _emptyRecord = null;
 
 
         public readonly Encoding encoding = Encoding.ASCII;
@@ -191,7 +191,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <param name="nInitialFields"></param>
         public DbfHeader(int nFieldCapacity)
         {
-            mFields = new List<DbfColumn>(nFieldCapacity);
+            _fields = new List<DbfColumn>(nFieldCapacity);
 
         }
 
@@ -203,7 +203,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mHeaderLength;
+                return _headerLength;
             }
         }
 
@@ -216,30 +216,30 @@ namespace SocialExplorer.IO.FastDBF
         {
 
             //throw exception if the header is locked
-            if (mLocked)
+            if (_locked)
                 throw new InvalidOperationException("This header is locked and can not be modified. Modifying the header would result in a corrupt DBF file. You can unlock the header by calling UnLock() method.");
 
             //since we are breaking the spec rules about max number of fields, we should at least 
             //check that the record length stays within a number that can be recorded in the header!
             //we have 2 unsigned bytes for record length for a maximum of 65535.
-            if (mRecordLength + oNewCol.Length > 65535)
+            if (_recordLength + oNewCol.Length > 65535)
                 throw new ArgumentOutOfRangeException("oNewCol", "Unable to add new column. Adding this column puts the record length over the maximum (which is 65535 bytes).");
 
 
             //add the column
-            mFields.Add(oNewCol);
+            _fields.Add(oNewCol);
 
             //update offset bits, record and header lengths
-            oNewCol.mDataAddress = mRecordLength;
-            mRecordLength += oNewCol.Length;
-            mHeaderLength += ColumnDescriptorSize;
+            oNewCol._dataAddress = _recordLength;
+            _recordLength += oNewCol.Length;
+            _headerLength += ColumnDescriptorSize;
 
             //clear empty record
-            mEmptyRecord = null;
+            _emptyRecord = null;
 
             //set dirty bit
-            mIsDirty = true;
-            mColumnNameIndex = null;
+            _isDirty = true;
+            _columnNameIndex = null;
 
         }
 
@@ -275,36 +275,36 @@ namespace SocialExplorer.IO.FastDBF
         public void RemoveColumn(int nIndex)
         {
             //throw exception if the header is locked
-            if (mLocked)
+            if (_locked)
                 throw new InvalidOperationException("This header is locked and can not be modified. Modifying the header would result in a corrupt DBF file. You can unlock the header by calling UnLock() method.");
 
 
-            DbfColumn oColRemove = mFields[nIndex];
-            mFields.RemoveAt(nIndex);
+            DbfColumn oColRemove = _fields[nIndex];
+            _fields.RemoveAt(nIndex);
 
 
-            oColRemove.mDataAddress = 0;
-            mRecordLength -= oColRemove.Length;
-            mHeaderLength -= ColumnDescriptorSize;
+            oColRemove._dataAddress = 0;
+            _recordLength -= oColRemove.Length;
+            _headerLength -= ColumnDescriptorSize;
 
             //if you remove a column offset shift for each of the columns 
             //following the one removed, we need to update those offsets.
             int nRemovedColLen = oColRemove.Length;
-            for (int i = nIndex; i < mFields.Count; i++)
-                mFields[i].mDataAddress -= nRemovedColLen;
+            for (int i = nIndex; i < _fields.Count; i++)
+                _fields[i]._dataAddress -= nRemovedColLen;
 
             //clear the empty record
-            mEmptyRecord = null;
+            _emptyRecord = null;
 
             //set dirty bit
-            mIsDirty = true;
-            mColumnNameIndex = null;
+            _isDirty = true;
+            _columnNameIndex = null;
 
         }
 
 
         /// <summary>
-        /// Look up a column index by name. Note that this is case sensitive, internally it does a lookup using a dictionary.
+        /// Look up a column index by name. NOT Case Sensitive. This is a change from previous behaviour!
         /// </summary>
         /// <param name="sName"></param>
         public DbfColumn this[string sName]
@@ -313,7 +313,7 @@ namespace SocialExplorer.IO.FastDBF
             {
                 int colIndex = FindColumn(sName);
                 if (colIndex > -1)
-                    return mFields[colIndex];
+                    return _fields[colIndex];
 
                 return null;
 
@@ -330,32 +330,32 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mFields[nIndex];
+                return _fields[nIndex];
             }
         }
 
 
         /// <summary>
-        /// Finds a column index by using a fast dictionary lookup-- creates column dictionary on first use. Returns -1 if not found. Note this is case sensitive!
+        /// Finds a column index by using a fast dictionary lookup-- creates column dictionary on first use. Returns -1 if not found. CHANGE: not case sensitive any longer!
         /// </summary>
-        /// <param name="sName">Column name</param>
+        /// <param name="sName">Column name (case insensitive comparison)</param>
         /// <returns>column index (0 based) or -1 if not found.</returns>
         public int FindColumn(string sName)
         {
 
-            if (mColumnNameIndex == null)
+            if (_columnNameIndex == null)
             {
-                mColumnNameIndex = new Dictionary<string, int>(mFields.Count);
+                _columnNameIndex = new Dictionary<string, int>(_fields.Count);
 
                 //create a new index
-                for (int i = 0; i < mFields.Count; i++)
+                for (int i = 0; i < _fields.Count; i++)
                 {
-                    mColumnNameIndex.Add(mFields[i].Name, i);
+                    _columnNameIndex.Add(_fields[i].Name.ToUpper(), i);
                 }
             }
 
             int columnIndex;
-            if (mColumnNameIndex.TryGetValue(sName, out columnIndex))
+            if (_columnNameIndex.TryGetValue(sName.ToUpper(), out columnIndex))
                 return columnIndex;
 
             return -1;
@@ -376,7 +376,7 @@ namespace SocialExplorer.IO.FastDBF
         /// </remarks>
         protected internal byte[] EmptyDataRecord
         {
-            get { return mEmptyRecord ?? (mEmptyRecord = encoding.GetBytes("".PadLeft(mRecordLength, ' ').ToCharArray())); }
+            get { return _emptyRecord ?? (_emptyRecord = encoding.GetBytes("".PadLeft(_recordLength, ' ').ToCharArray())); }
         }
 
 
@@ -385,7 +385,7 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         public int ColumnCount
         {
-            get { return mFields.Count; }
+            get { return _fields.Count; }
 
         }
 
@@ -397,7 +397,7 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mRecordLength;
+                return _recordLength;
             }
         }
 
@@ -414,15 +414,15 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mNumRecords;
+                return _numRecords;
             }
 
             set
             {
-                mNumRecords = value;
+                _numRecords = value;
 
                 //set the dirty bit
-                mIsDirty = true;
+                _isDirty = true;
 
             }
         }
@@ -437,12 +437,12 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mLocked;
+                return _locked;
             }
 
             set
             {
-                mLocked = value;
+                _locked = value;
             }
 
         }
@@ -453,7 +453,7 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         public void Unlock()
         {
-            mLocked = false;
+            _locked = false;
         }
 
 
@@ -464,12 +464,12 @@ namespace SocialExplorer.IO.FastDBF
         {
             get
             {
-                return mIsDirty;
+                return _isDirty;
             }
 
             set
             {
-                mIsDirty = value;
+                _isDirty = value;
             }
         }
 
@@ -486,21 +486,21 @@ namespace SocialExplorer.IO.FastDBF
 
             //write the header
             // write the output file type.
-            writer.Write((byte)mFileType);
+            writer.Write((byte)_fileType);
 
             //Update date format is YYMMDD, which is different from the column Date type (YYYYDDMM)
-            writer.Write((byte)(mUpdateDate.Year - 1900));
-            writer.Write((byte)mUpdateDate.Month);
-            writer.Write((byte)mUpdateDate.Day);
+            writer.Write((byte)(_updateDate.Year - 1900));
+            writer.Write((byte)_updateDate.Month);
+            writer.Write((byte)_updateDate.Day);
 
             // write the number of records in the datafile. (32 bit number, little-endian unsigned)
-            writer.Write(mNumRecords);
+            writer.Write(_numRecords);
 
             // write the length of the header structure.
-            writer.Write(mHeaderLength);
+            writer.Write(_headerLength);
 
             // write the length of a record
-            writer.Write((ushort)mRecordLength);
+            writer.Write((ushort)_recordLength);
 
             // write the reserved bytes in the header
             for (int i = 0; i < 20; i++)
@@ -508,7 +508,7 @@ namespace SocialExplorer.IO.FastDBF
 
             // write all of the header records
             byte[] byteReserved = new byte[14];  //these are initialized to 0 by default.
-            foreach (DbfColumn field in mFields)
+            foreach (DbfColumn field in _fields)
             {
                 char[] cname = field.Name.PadRight(11, (char)0).ToCharArray();
                 writer.Write(cname);
@@ -547,12 +547,12 @@ namespace SocialExplorer.IO.FastDBF
             writer.Flush();
 
             //clear dirty bit
-            mIsDirty = false;
+            _isDirty = false;
 
 
             //lock the header so it can not be modified any longer, 
             //we could actually postpond this until first record is written!
-            mLocked = true;
+            _locked = true;
 
 
         }
@@ -576,28 +576,28 @@ namespace SocialExplorer.IO.FastDBF
             int year = (int)reader.ReadByte();
             int month = (int)reader.ReadByte();
             int day = (int)reader.ReadByte();
-            mUpdateDate = new DateTime(year + 1900, month, day);
+            _updateDate = new DateTime(year + 1900, month, day);
 
             // read the number of records.
-            mNumRecords = reader.ReadUInt32();
+            _numRecords = reader.ReadUInt32();
 
             // read the length of the header structure.
-            mHeaderLength = reader.ReadUInt16();
+            _headerLength = reader.ReadUInt16();
 
             // read the length of a record
-            mRecordLength = reader.ReadInt16();
+            _recordLength = reader.ReadInt16();
 
             // skip the reserved bytes in the header.
             reader.ReadBytes(20);
 
             // calculate the number of Fields in the header
-            int nNumFields = (mHeaderLength - FileDescriptorSize) / ColumnDescriptorSize;
+            int nNumFields = (_headerLength - FileDescriptorSize) / ColumnDescriptorSize;
 
             //offset from start of record, start at 1 because that's the delete flag.
             int nDataOffset = 1;
 
             // read all of the header records
-            mFields = new List<DbfColumn>(nNumFields);
+            _fields = new List<DbfColumn>(nNumFields);
             for (int i = 0; i < nNumFields; i++)
             {
 
@@ -644,7 +644,7 @@ namespace SocialExplorer.IO.FastDBF
                 reader.ReadBytes(14);
 
                 //Create and add field to collection
-                mFields.Add(new DbfColumn(sFieldName, DbfColumn.GetDbaseType(cDbaseType), nFieldLength, nDecimals, nDataOffset));
+                _fields.Add(new DbfColumn(sFieldName, DbfColumn.GetDbaseType(cDbaseType), nFieldLength, nDecimals, nDataOffset));
 
                 // add up address information, you can not trust the address recorded in the DBF file...
                 nDataOffset += nFieldLength;
@@ -658,7 +658,7 @@ namespace SocialExplorer.IO.FastDBF
             //read any extra header bytes...move to first record
             //equivalent to reader.BaseStream.Seek(mHeaderLength, SeekOrigin.Begin) except that we are not using the seek function since
             //we need to support streams that can not seek like web connections.
-            int nExtraReadBytes = mHeaderLength - (FileDescriptorSize + (ColumnDescriptorSize * mFields.Count));
+            int nExtraReadBytes = _headerLength - (FileDescriptorSize + (ColumnDescriptorSize * _fields.Count));
             if (nExtraReadBytes > 0)
                 reader.ReadBytes(nExtraReadBytes);
 
@@ -668,23 +668,23 @@ namespace SocialExplorer.IO.FastDBF
             //sometimes the header does not contain the correct record count
             //if we are reading the file from the web, we have to use ReadNext() functions anyway so
             //Number of records is not so important and we can trust the DBF to have it stored correctly.
-            if (reader.BaseStream.CanSeek && mNumRecords == 0)
+            if (reader.BaseStream.CanSeek && _numRecords == 0)
             {
                 //notice here that we subtract file end byte which is supposed to be 0x1A,
                 //but some DBF files are incorrectly written without this byte, so we round off to nearest integer.
                 //that gives a correct result with or without ending byte.
-                if (mRecordLength > 0)
-                    mNumRecords = (uint)Math.Round(((double)(reader.BaseStream.Length - mHeaderLength - 1) / mRecordLength));
+                if (_recordLength > 0)
+                    _numRecords = (uint)Math.Round(((double)(reader.BaseStream.Length - _headerLength - 1) / _recordLength));
 
             }
 
 
             //lock header since it was read from a file. we don't want it modified because that would corrupt the file.
             //user can override this lock if really necessary by calling UnLock() method.
-            mLocked = true;
+            _locked = true;
 
             //clear dirty bit
-            mIsDirty = false;
+            _isDirty = false;
 
         }
 
