@@ -557,13 +557,40 @@ namespace SocialExplorer.IO.FastDBF
 
         }
 
-
         /// <summary>
         /// Read header data, make sure the stream is positioned at the start of the file to read the header otherwise you will get an exception.
         /// When this function is done the position will be the first record.
         /// </summary>
         /// <param name="reader"></param>
         public void Read(BinaryReader reader)
+        {
+            var readerPos = reader.BaseStream.Position;
+
+            // Attempt to read the header without extended FieldLength format
+            Read(reader, false);
+
+            // Calculate the expected field length.
+            var calculatedDataLength = 1;
+            for (var i = 0; i < _fields.Count; i++)
+            {
+                calculatedDataLength += _fields[i].Length;
+            }
+
+            // If the calculated field length does not match the expected length, re-processess the file with extended FieldLength format 
+            if (RecordLength != calculatedDataLength)
+            {
+                reader.BaseStream.Position = readerPos;
+                Read(reader, true);
+            }
+        }
+
+
+        /// <summary>
+        /// Read header data, make sure the stream is positioned at the start of the file to read the header otherwise you will get an exception.
+        /// When this function is done the position will be the first record.
+        /// </summary>
+        /// <param name="reader"></param>
+        private void Read(BinaryReader reader, bool allowExtendedFieldLength)
         {
 
             // type of reader.
@@ -626,8 +653,17 @@ namespace SocialExplorer.IO.FastDBF
                 int nDecimals = 0;
                 if (cDbaseType == 'C' || cDbaseType == 'c')
                 {
-                    //treat decimal count as high byte
-                    nFieldLength = (int)reader.ReadUInt16();
+                    if (allowExtendedFieldLength)
+                    {
+                        //treat decimal count as high byte
+                        nFieldLength = (int)reader.ReadInt16();
+                    }
+                    else
+                    {
+                        //treat decimal count as high byte
+                        nFieldLength = (int)reader.ReadByte();
+                        reader.ReadByte();
+                    }
                 }
                 else
                 {
