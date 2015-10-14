@@ -84,7 +84,7 @@ namespace SocialExplorer.IO.FastDBF
 
 
         //encoder
-        private readonly Encoding encoding = Encoding.GetEncoding(1252);
+        private readonly Encoding encoding = Encoding.GetEncoding(936);
 
         /// <summary>
         /// Column Name to Column Index map

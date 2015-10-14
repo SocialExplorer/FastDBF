@@ -171,7 +171,7 @@ namespace SocialExplorer.IO.FastDBF
         private byte[] _emptyRecord = null;
 
 
-        public readonly Encoding encoding = Encoding.ASCII;
+        public readonly Encoding encoding = Encoding.GetEncoding(936);
 
 
         [Obsolete]
@@ -510,8 +510,9 @@ namespace SocialExplorer.IO.FastDBF
             byte[] byteReserved = new byte[14];  //these are initialized to 0 by default.
             foreach (DbfColumn field in _fields)
             {
-                char[] cname = field.Name.PadRight(11, (char)0).ToCharArray();
-                writer.Write(cname);
+                byte[] cname = System.Text.Encoding.GetEncoding(936).GetBytes(field.Name.PadRight(11, (char)0));
+                //char[] cname = field.Name.PadRight(11, (char)0).ToCharArray();
+                writer.Write(cname,0,11);
 
                 // write the field type
                 writer.Write((char)field.ColumnTypeChar);
@@ -602,9 +603,10 @@ namespace SocialExplorer.IO.FastDBF
             {
 
                 // read the field name				
-                char[] buffer = new char[11];
-                buffer = reader.ReadChars(11);
-                string sFieldName = new string(buffer);
+                //char[] buffer = new char[11];
+                byte[] buffer = reader.ReadBytes(11);
+                string sFieldName = System.Text.Encoding.GetEncoding(936).GetString(buffer);
+                //string sFieldName = new string(buffer);
                 int nullPoint = sFieldName.IndexOf((char)0);
                 if (nullPoint != -1)
                     sFieldName = sFieldName.Substring(0, nullPoint);
@@ -643,6 +645,8 @@ namespace SocialExplorer.IO.FastDBF
                 //read the reserved bytes.
                 reader.ReadBytes(14);
 
+                if ((nFieldLength + nDataOffset) > _recordLength)
+                    nFieldLength = _recordLength - nDataOffset;
                 //Create and add field to collection
                 _fields.Add(new DbfColumn(sFieldName, DbfColumn.GetDbaseType(cDbaseType), nFieldLength, nDecimals, nDataOffset));
 

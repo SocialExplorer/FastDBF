@@ -51,9 +51,9 @@ namespace SocialExplorer.IO.FastDBF
         protected BinaryWriter _dbfFileWriter = null;
 
         /// <summary>
-        /// By default use windows 1252 code page encoding.
+        /// By default use windows 936 code page encoding.
         /// </summary>
-        private Encoding encoding =  Encoding.GetEncoding(1252);
+        private Encoding encoding =  Encoding.GetEncoding(936);
 
         /// <summary>
         /// File that was opened, if one was opened at all.
@@ -78,7 +78,7 @@ namespace SocialExplorer.IO.FastDBF
 
         [Obsolete]
         public DbfFile()
-            : this(Encoding.GetEncoding(1252))
+            : this(Encoding.GetEncoding(936))
         {
         }
 
