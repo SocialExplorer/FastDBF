@@ -24,10 +24,6 @@ namespace SocialExplorer.IO.FastDBF
     /// This class represents a DBF file. You can create new, open, update and save DBF files using this class and supporting classes.
     /// Also, this class supports reading/writing from/to an internet forward only type of stream!
     /// </summary>
-    /// <remarks>
-    /// TODO: add end of file byte '0x1A' !!!
-    /// We don't relly on that byte at all, and everything works with or without that byte, but it should be there by spec.
-    /// </remarks>
     public class DbfFile
     {
 
@@ -42,6 +38,10 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         protected bool _headerWritten = false;
 
+        /// <summary>
+        /// flag that indicates whether a footer update is required
+        /// </summary>
+        protected bool _footerUpdateNeeded = false;
 
         /// <summary>
         /// Streams to read and write to the DBF file.
@@ -204,13 +204,19 @@ namespace SocialExplorer.IO.FastDBF
             if (_header.IsDirty)
                 WriteHeader();
 
-
+            //try to update the footer if the file has been udpated
+            //------------------------------------------
+            if (_footerUpdateNeeded)
+                WriteFooter();
 
             //Empty header...
             //--------------------------------
             _header = new DbfHeader(encoding);
             _headerWritten = false;
 
+            //Clear the footer required flag
+            //------------------------------------------
+            _footerUpdateNeeded = false;
 
             //reset current record index
             //--------------------------------
@@ -485,6 +491,7 @@ namespace SocialExplorer.IO.FastDBF
             else
                 Update(orec);
 
+            _footerUpdateNeeded = true;
         }
 
         public void Write(DbfRecord orec, bool bClearRecordAfterWrite)
@@ -544,8 +551,8 @@ namespace SocialExplorer.IO.FastDBF
 
             //write
             orec.Write(_dbfFile);
-
-
+            
+            _footerUpdateNeeded = true;
         }
 
 
@@ -561,11 +568,13 @@ namespace SocialExplorer.IO.FastDBF
             //--------------------------------
             if (_dbfFileWriter != null)
             {
+
                 if (_dbfFileWriter.BaseStream.CanSeek)
                 {
                     _dbfFileWriter.Seek(0, SeekOrigin.Begin);
                     _header.Write(_dbfFileWriter);
                     _headerWritten = true;
+                    _footerUpdateNeeded = true;
                     return true;
                 }
                 else
@@ -575,7 +584,7 @@ namespace SocialExplorer.IO.FastDBF
                         _header.Write(_dbfFileWriter);
 
                     _headerWritten = true;
-
+                    _footerUpdateNeeded = true;
                 }
             }
 
@@ -583,7 +592,44 @@ namespace SocialExplorer.IO.FastDBF
 
         }
 
+        public bool WriteFooter()
+        {
+            // return false if it's not possible to write.
+            if (_dbfFileWriter == null)
+            {
+                return false;
+            }
 
+            //if stream can not seek, then just write it out and that's it.
+            if (!_dbfFileWriter.BaseStream.CanSeek)
+            {
+                _dbfFileWriter.Write((byte)0x1A);
+                return true;
+            }
+            
+            var streamLength = _dbfFileWriter.BaseStream.Length;
+            var expectedLength = Header.HeaderLength + Header.RecordCount * Header.RecordLength + 1;
+
+            // If the length of the stream is the same as the expected length, seek ready to re-write the last byte. 
+            if (streamLength == expectedLength)
+            {
+                _dbfFileWriter.BaseStream.Seek(-1, SeekOrigin.End);
+            }
+            // If the length of the stream is one less than expected length, seek ready to append the last byte. 
+            else if (streamLength == expectedLength - 1)
+            {
+                _dbfFileWriter.BaseStream.Seek(0, SeekOrigin.End);
+            }
+            // Otherwise, something isn't right. return false.
+            else
+            {
+                return false;
+            }
+
+            // Write the last byte and return true
+            _dbfFileWriter.Write((byte)0x1A);
+            return true;
+        }
 
         /// <summary>
         /// Access DBF header with information on columns. Use this object for faster access to header. 
