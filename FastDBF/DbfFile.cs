@@ -66,7 +66,7 @@ namespace SocialExplorer.IO.FastDBF
         /// mRecordsReadCount is used to keep track of record index. With a seek enabled stream, 
         /// we can always calculate index using stream position.
         /// </summary>
-        protected int _recordsReadCount = 0;
+        protected long _recordsReadCount = 0;
 
 
         /// <summary>
