@@ -45,7 +45,7 @@ namespace SocialExplorer.IO.FastDBF
         /// <summary>
         /// Zero based record index. -1 when not set, new records for example.
         /// </summary>
-        private int _recordIndex = -1;
+        private long _recordIndex = -1;
 
         /// <summary>
         /// Empty Record array reference used to clear fields quickly (or entire record).
@@ -441,7 +441,7 @@ namespace SocialExplorer.IO.FastDBF
         /// is not available and there is no way to figure out what index the record was unless you 
         /// count how many records were read, and that's exactly what CDbfFile does.
         /// </remarks>
-        public int RecordIndex
+        public long RecordIndex
         {
             get
             {
