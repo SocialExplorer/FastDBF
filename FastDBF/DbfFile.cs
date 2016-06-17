@@ -229,7 +229,10 @@ namespace SocialExplorer.IO.FastDBF
                 _dbfFileReader.Close();
 
             if (_dbfFile != null)
+            {
                 _dbfFile.Close();
+                _dbfFile.Dispose();
+            }
 
 
             //set streams to null
