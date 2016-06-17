@@ -66,7 +66,7 @@ namespace SocialExplorer.IO.FastDBF
         /// mRecordsReadCount is used to keep track of record index. With a seek enabled stream, 
         /// we can always calculate index using stream position.
         /// </summary>
-        protected int _recordsReadCount = 0;
+        protected long _recordsReadCount = 0;
 
 
         /// <summary>
@@ -363,7 +363,7 @@ namespace SocialExplorer.IO.FastDBF
         /// It does not have to come from the same header, but it must match the structure. We are not going as far as to check size of each field.
         /// The idea is to be flexible but safe. It's a fine balance, these two are almost always at odds.
         /// </remarks>
-        public bool Read(int index, DbfRecord oFillRecord)
+        public bool Read(long index, DbfRecord oFillRecord)
         {
 
             //check if we can fill this record with data. it must match record size specified by header and number of columns.
@@ -433,7 +433,7 @@ namespace SocialExplorer.IO.FastDBF
         /// </summary>
         /// <param name="index">Zero based index.</param>
         /// <returns>Null if record can not be read, otherwise returns a new record.</returns>
-        public DbfRecord Read(int index)
+        public DbfRecord Read(long index)
         {
             //create a new record and fill it.
             DbfRecord orec = new DbfRecord(_header);
