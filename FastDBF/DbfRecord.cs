@@ -105,6 +105,10 @@ namespace SocialExplorer.IO.FastDBF
 
             //create a buffer to hold all record data. We will reuse this buffer to write all data to the file.
             _data = new byte[_header.RecordLength];
+
+            // Make sure mData[0] correctly represents 'not deleted'
+            IsDeleted = false;
+
             _emptyRecord = _header.EmptyDataRecord;
             encoding = oHeader.encoding;
 
