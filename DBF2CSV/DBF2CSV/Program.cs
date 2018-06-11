@@ -38,8 +38,9 @@ namespace DBF2CSV
         Console.WriteLine("/F  - format numbers so 5.5000 comes out as 5.5");
         Console.WriteLine("/P  - padded output, fixed width (/P trumps /F)");
         Console.WriteLine("/Q  - only output quotes when comma appears in data");
-        
-        Console.WriteLine("\n\nExample: dbf2csv \"in.dbf\" \"out.csv\" /P /Q");
+        Console.WriteLine("/E encoding - character encoding");
+
+        Console.WriteLine("\n\nExample: dbf2csv \"in.dbf\" \"out.csv\" /P /Q /E Windows-1250");
         
       }
       else
@@ -62,7 +63,8 @@ namespace DBF2CSV
           if(Console.ReadKey().KeyChar.ToString().ToUpper() != "Y")
             return;
         }
-        
+
+        Encoding encoding = Encoding.GetEncoding(1252);
         bool bSwitchF = false;
         bool bSwitchP = false;
         bool bSwitchQ = false;
@@ -78,11 +80,14 @@ namespace DBF2CSV
         for (int i = 0; i < args.Length; i++)
           if (args[i] == "/Q")
             bSwitchQ = true;
-        
-        
+
+        for (int i = 0; i < args.Length; i++)
+          if ((args[i] == "/E") && ((i + 1) < args.Length))
+            encoding = Encoding.GetEncoding(args[i + 1]);
+
         //open DBF file and create CSV output file...
-        StreamWriter swcsv = new StreamWriter(args[1], false, Encoding.Default);
-        DbfFile dbf = new DbfFile(Encoding.UTF8);
+        StreamWriter swcsv = new StreamWriter(args[1], false, encoding);
+        DbfFile dbf = new DbfFile(encoding);
         dbf.Open(args[0], FileMode.Open);
         
         
