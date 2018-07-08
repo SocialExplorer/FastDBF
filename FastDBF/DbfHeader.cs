@@ -557,13 +557,41 @@ namespace SocialExplorer.IO.FastDBF
 
         }
 
-
         /// <summary>
         /// Read header data, make sure the stream is positioned at the start of the file to read the header otherwise you will get an exception.
         /// When this function is done the position will be the first record.
         /// </summary>
         /// <param name="reader"></param>
         public void Read(BinaryReader reader)
+        {
+            var readerPos = reader.BaseStream.Position;
+            
+            // 'Read' can read both standard headers and headers wih the wide charactor fields as used in Clipper and FoxPro. Read using standard method first.
+            Read(reader, false);
+
+            // Calculate the record length from the sum of field length.
+            var calculatedDataLength = 1;
+            for (var i = 0; i < _fields.Count; i++)
+            {
+                calculatedDataLength += _fields[i].Length;
+            }
+
+            // If the record length does not match the expected length, re-processess the header with support for wide charactor fields 
+            if (RecordLength != calculatedDataLength)
+            {
+                reader.BaseStream.Position = readerPos;
+                Read(reader, true);
+            }
+        }
+
+
+        /// <summary>
+        /// Read header data, make sure the stream is positioned at the start of the file to read the header otherwise you will get an exception.
+        /// When this function is done the position will be the first record.
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <param name="allowExtendedFieldLength">true to use the Decimal byte as an extension of the field length field</param>
+        private void Read(BinaryReader reader, bool allowExtendedFieldLength)
         {
 
             // type of reader.
@@ -626,8 +654,20 @@ namespace SocialExplorer.IO.FastDBF
                 int nDecimals = 0;
                 if (cDbaseType == 'C' || cDbaseType == 'c')
                 {
-                    //treat decimal count as high byte
-                    nFieldLength = (int)reader.ReadUInt16();
+                    //if allowing extended field length, then read FieldLength and Decimal count as one number to allow char fields to be
+                    //longer than 256 bytes (ASCII char). This is the way Clipper and FoxPro do it, and there is really no downside
+                    //since for char fields decimal count should be zero for other versions that do not support this extended functionality.
+                    if (allowExtendedFieldLength)
+                    {
+                        //treat decimal count as high byte
+                        nFieldLength = (int)reader.ReadInt16();
+                    }
+                    else
+                    {
+                        //read just the FieldLength byte as with standard DBF header.
+                        nFieldLength = (int)reader.ReadByte();
+                        reader.ReadByte();
+                    }
                 }
                 else
                 {
